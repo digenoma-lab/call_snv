@@ -1,10 +1,6 @@
 
 
 
-params.wsize=3000000
-params.outdir="results"
-params.debug=true
-params.ref="genome.fa"
 
 
 process create_chunks {
@@ -101,12 +97,11 @@ process strelka{
      tag "$bed"
      publishDir "$params.outdir/strelka", mode : "copy"
 
-    /* conda "bioconda::strelka=2.9.10"
+     conda "bioconda::strelka=2.9.10"
     container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
         'https://depot.galaxyproject.org/singularity/strelka:2.9.10--h9ee0642_1' :
         'biocontainers/strelka:2.9.10--h9ee0642_1' }"
-    */
-
+    
     input:
       tuple val(sampleId), val(group),file(bams),file(bais),file(bed)
       path fastaref
