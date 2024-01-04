@@ -104,8 +104,6 @@ process strelka{
     
     input:
       tuple val(sampleId), val(group),file(bams),file(bais),file(bed)
-      path fastaref
-      path fastaFai
     output:
      tuple val("${part}"), path("*variants.vcf.gz")    , emit: vcf
      tuple val("${part}"), path("*variants.vcf.gz.tbi"), emit: vcf_tbi
@@ -124,9 +122,8 @@ process strelka{
         """
         echo configureStrelkaGermlineWorkflow.py \\
                 ${bamg} \\
-                --referenceFasta ${fastaref} \\
+                --referenceFasta ${params.ref} \\
                 --callRegions ${bed} \\
-                --genome  \\
                 --runDir ./strelka_germline
 
         echo python strelka_germline/runWorkflow.py -m local -j $task.cpus
@@ -139,7 +136,6 @@ process strelka{
             ${bamg} \\
              --referenceFasta ${params.ref} \\
              --callRegions ${bed} \\
-             --genome  \\
              --runDir ./strelka_germline
      python strelka_germline/runWorkflow.py -m local -j $task.cpus
      mv strelka_germline/results/variants/genome.*.vcf.gz     .
@@ -165,7 +161,7 @@ workflow {
     }
 
     fai=Channel.fromPath(params.fai)
-    fasta=Channel.fromPath(params.ref)
+//    fasta=Channel.fromPath(params.ref)
 
     all_bamsbais=read_bams_ch.groupTuple(by: 1)
 
