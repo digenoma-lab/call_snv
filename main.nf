@@ -32,7 +32,7 @@ process create_chunks {
 
 
 process strelka {
-     tag "$bed"
+     tag "all"
      publishDir "$params.outdir/strelka", mode : "copy"
 
     conda "bioconda::strelka=2.9.10"
@@ -41,7 +41,7 @@ process strelka {
         'biocontainers/strelka:2.9.10--h9ee0642_1' }" 
     
     input:
-      tuple val(sampleId), val(group),file(bams),file(bais),val(bed),file(b),file(t)
+      tuple val(sampleId), val(group),file(bams),file(bais)
     output:
      tuple val("${part}"), path("*variants.vcf.gz")    , emit: vcf
      tuple val("${part}"), path("*variants.vcf.gz.tbi"), emit: vcf_tbi
@@ -49,7 +49,7 @@ process strelka {
      tuple val("${part}"), path("genome.*.vcf.gz.tbi")  , emit: genome_vcf_tbi
     
     script:
-    def part = "all-" + bed.replaceAll(".bed","")
+    def part = "all-"
     def prefix=part
     def samplesgroup=""
     def bamg=""
@@ -61,7 +61,7 @@ process strelka {
         echo configureStrelkaGermlineWorkflow.py \\
                 ${bamg} \\
                 --referenceFasta ${params.ref} \\
-                --callRegions ${b} \\
+                --callRegions ${params.bed} \\
                 --runDir ./strelka_germline
 
         echo python strelka_germline/runWorkflow.py -m local -j $task.cpus
@@ -73,7 +73,7 @@ process strelka {
      configureStrelkaGermlineWorkflow.py \\
             ${bamg} \\
              --referenceFasta ${params.ref} \\
-             --callRegions ${b} \\
+             --callRegions ${params.bed} \\
              --runDir ./strelka_germline
      python strelka_germline/runWorkflow.py -m local -j $task.cpus
      mv strelka_germline/results/variants/genome.*.vcf.gz     .
@@ -103,7 +103,7 @@ workflow{
 
     all_bamsbais=read_bams_ch.groupTuple(by: 1)
 
-    create_chunks(fai)
+    /*create_chunks(fai)
     all_beds=create_chunks.out.bed.collect().flatten()
     all_beds=all_beds.map { [it.baseName,
           it] }
@@ -113,7 +113,9 @@ workflow{
 
     all_beds=all_beds.combine(all_tbi,by: 0)
     strparts=all_bamsbais.combine(all_beds)
+
     strparts.view()
-    strelka(strparts)
+    */
+    strelka(all_bamsbais)
 
  }   
