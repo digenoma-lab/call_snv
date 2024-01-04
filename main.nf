@@ -168,6 +168,6 @@ workflow {
     create_chunks(fai)
     all_parts=create_chunks.out.bed.collect().flatten()
     strparts=all_bamsbais.combine(all_parts)
-    strelka(strparts,fasta,fai)
+    strelka(strparts)
 
  }   
