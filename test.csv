@@ -1,0 +1,5 @@
+sampleId,part,bam,bai
+s1,1,s1.bam,s1.bam.bai
+s2,1,s2.bam,s2.bam.bai
+s3,1,s3.bam,s3.bam.bai
+s4,1,s4.bam,s4.bam.bai
