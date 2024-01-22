@@ -118,7 +118,7 @@ process manta {
                 ${bamg} \\
                 --referenceFasta ${params.ref} \\
                 --callRegions ${params.bed} \\
-                --runDir ./strelka_germline
+                --runDir ./manta
 
         echo python strelka_germline/runWorkflow.py -m local -j $task.cpus
         mkdir -p manta
@@ -194,7 +194,7 @@ workflow{
 
     strparts.view()
     */
-    
+
     if (params.runstrelka){
     strelka(all_bamsbais)
     }
