@@ -30,7 +30,7 @@ process create_chunks {
     }
 }
 
-
+//Multisample strelka SNP calling
 process strelka {
      tag "all"
      publishDir "$params.outdir/strelka", mode : "copy"
@@ -85,6 +85,85 @@ process strelka {
 }
 
 
+
+//Multisample manta SV calling
+process manta {
+     tag "all"
+     publishDir "$params.outdir/manta", mode : "copy" 
+    
+    input:
+      tuple val(sampleId), val(group),file(bams),file(bais)
+    output:    
+  tuple val(part), path("manta/Manta_${part}.candidateSmallIndels.vcf.gz")    , emit: manta_small_indels
+  tuple val(part), path("manta/Manta_${part}.candidateSmallIndels.vcf.gz.tbi")  , emit: manta_small_indels_tbi
+  tuple val(part), path("manta/Manta_${part}.candidateSV.vcf.gz")         , emit: manta_candidate
+  tuple val(part), path("manta/Manta_${part}.candidateSV.vcf.gz.tbi")       , emit: manta_candidate_tbi
+  tuple val(part), path("manta/Manta_${part}.diploidSV.vcf.gz")         , emit: manta_diploid
+  tuple val(part), path("manta/Manta_${part}.diploidSV.vcf.gz.tbi")       , emit: manta_diploid_tbi
+  tuple val(part), path("manta/Manta_${part}.diploidSV_converted.vcf.gz")     , emit: manta_diploid_convert
+  tuple val(part), path("manta/Manta_${part}.diploidSV_converted.vcf.gz.tbi")   , emit: manta_diploid_convert_tbi
+
+
+    script:
+    def part = "all"
+    def prefix=part
+    def samplesgroup=""
+    def bamg=""
+    for (b in bams){
+        bamg=bamg+" --bam $b"
+    }
+      if (params.debug == true){
+        """
+        echo configManta.py  \\
+                ${bamg} \\
+                --referenceFasta ${params.ref} \\
+                --callRegions ${params.bed} \\
+                --runDir ./strelka_germline
+
+        echo python strelka_germline/runWorkflow.py -m local -j $task.cpus
+        mkdir -p manta
+        touch manta/Manta_${prefix}.candidateSmallIndels.vcf.gz  manta/Manta_${prefix}.candidateSmallIndels.vcf.gz.tbi
+        touch manta/Manta_${prefix}.candidateSV.vcf.gz manta/Manta_${prefix}.candidateSV.vcf.gz.tbi
+        touch manta/Manta_${prefix}.diploidSV.vcf.gz manta/Manta_${prefix}.diploidSV.vcf.gz.tbi 
+        touch manta/Manta_${sampleID}.diploidSV_converted.vcf manta/Manta_${part}.diploidSV_converted.vcf.gz.tbi
+        """
+    }
+    else{
+        """
+     configManta.py  \\
+            ${bamg} \\
+             --referenceFasta ${params.ref} \\
+             --callRegions ${params.bed} \\
+             --runDir ./manta
+    manta/runWorkflow.py -m local -j ${task.cpus}     
+    # clean up outputs
+  mv manta/results/variants/candidateSmallIndels.vcf.gz \
+    manta/Manta_${prefix}.candidateSmallIndels.vcf.gz
+  mv manta/results/variants/candidateSmallIndels.vcf.gz.tbi \
+    manta/Manta_${prefix}.candidateSmallIndels.vcf.gz.tbi
+  mv manta/results/variants/candidateSV.vcf.gz \
+    manta/Manta_${prefix}.candidateSV.vcf.gz
+  mv manta/results/variants/candidateSV.vcf.gz.tbi \
+    manta/Manta_${prefix}.candidateSV.vcf.gz.tbi
+  mv manta/results/variants/diploidSV.vcf.gz \
+    manta/Manta_${prefix}.diploidSV.vcf.gz
+  mv manta/results/variants/diploidSV.vcf.gz.tbi \
+    manta/Manta_${prefix}.diploidSV.vcf.gz.tbi  
+
+# convert multiline inversion BNDs from manta vcf to single line
+  convertInversion.py \$(which samtools) ${params.ref} \
+    manta/Manta_${sampleID}.diploidSV.vcf.gz \
+    > manta/Manta_${sampleID}.diploidSV_converted.vcf
+
+  # zip and index converted vcf
+  bgzip manta/Manta_${sampleID}.diploidSV_converted.vcf
+  tabix manta/Manta_${sampleID}.diploidSV_converted.vcf.gz
+
+  """  
+    }
+}
+
+
 workflow{
     // TODO do a parameter check
    // PRINT_VERSIONS()
@@ -99,7 +178,6 @@ workflow{
     }
 
     fai=Channel.fromPath(params.fai)
-//    fasta=Channel.fromPath(params.ref)
 
     all_bamsbais=read_bams_ch.groupTuple(by: 1)
 
@@ -116,6 +194,13 @@ workflow{
 
     strparts.view()
     */
+    
+    if (params.runstrelka){
     strelka(all_bamsbais)
+    }
+
+    if(params.runmanta){
+      manta(all_bamsbais)
+    }
 
  }   
